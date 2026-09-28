@@ -286,16 +286,6 @@ For normal operation, Debug should remain disabled.
 
 The plugin uses only standard Python libraries.
 
-It does not require:
-
-```text
-pip install
-requirements.txt
-virtual environment
-install.sh
-API key
-```
-
 No additional Python packages are required.
 
 ## Data source
