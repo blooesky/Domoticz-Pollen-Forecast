@@ -4,9 +4,9 @@
 # No API key and no external Python packages required.
 
 """
-<plugin key="PollenForecast" name="Pollen Forecast" author="4D" version="1.0.1" externallink="https://open-meteo.com/en/docs/air-quality-api">
+<plugin key="PollenForecast" name="Pollen Forecast" author="4D" version="1.0.1" externallink="https://github.com/blooesky/Domoticz-Pollen-Forecast">
     <description>
-        <h2>Pollen Forecast / Prognoză polen</h2>
+        <h2>Pollen Forecast</h2>
         <p>Creates 4 devices: pollen alert today, pollen alert tomorrow, pollen details today and pollen details tomorrow.</p>
         <p>Creeaza 4 dispozitive: alertă polen azi, alertă polen mâine, detalii polen azi si detalii polen mâine.</p>
         <p>Data: Open-Meteo Air Quality API, based on CAMS European Air Quality Forecast.</p>
