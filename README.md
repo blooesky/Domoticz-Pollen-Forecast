@@ -1,4 +1,4 @@
-# Domoticz Pollen Forecast Plugin
+# Domoticz Pollen Forecast Plugin  for EU
 
 A simple bilingual Domoticz plugin for monitoring airborne pollen levels using the free **Open-Meteo Air Quality API**.
 
