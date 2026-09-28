@@ -1,7 +1,7 @@
 # Domoticz Pollen Forecast Plugin  for EU
 
 A simple bilingual Domoticz plugin for monitoring airborne pollen levels using the free **Open-Meteo Air Quality API**.
-
+Pollen data is currently available only in Europe.
 The plugin provides pollen alerts for **today** and **tomorrow**, together with detailed pollen information for each supported pollen type.
 
 No API key and no external Python libraries are required.
