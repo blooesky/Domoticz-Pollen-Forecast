@@ -478,6 +478,3 @@ Current version:
 1.0.1
 ```
 
-## License
-
-This project can be distributed under the MIT License.
