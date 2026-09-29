@@ -2,10 +2,10 @@
 # Pollen Forecast plugin for Domoticz
 # Data source: Open-Meteo Air Quality API / CAMS European Air Quality Forecast
 # No API key and no external Python packages required.
-# Copyright (c) 2026 blooesky. All rights reserved.
+
 
 """
-<plugin key="PollenForecast" name="Pollen Forecast" author="blooesky" version="1.1.0" externallink="https://github.com/blooesky/Domoticz-Pollen-Forecast">
+<plugin key="PollenForecast" name="Pollen Forecast" author="4D" version="1.1.0" externallink="https://github.com/blooesky/Domoticz-Pollen-Forecast">
     <description>
         <h2>Pollen Forecast</h2>
         <p>Creates 4 devices: pollen alert today, pollen alert tomorrow, pollen details today and pollen details tomorrow.</p>
@@ -13,12 +13,12 @@
         <p>Data source: Open-Meteo Air Quality API, based on CAMS European Air Quality Forecast.</p>
     </description>
     <params>
-        <param field="Mode1" label="Latitude" width="120px" required="true" default="44.4268"/>
-        <param field="Mode2" label="Longitude" width="120px" required="true" default="26.1025"/>
-        <param field="Mode3" label="Language" width="180px" required="true" default="ro">
+        <param field="Mode1" label="Latitude" width="120px" required="true" default=""/>
+        <param field="Mode2" label="Longitude" width="120px" required="true" default=""/>
+        <param field="Mode3" label="Language" width="180px" required="true" default="en">
             <options>
-                <option label="Română" value="ro" default="true"/>
-                <option label="English" value="en"/>
+                <option label="Română" value="ro"/>
+                <option label="English" value="en" default="true"/>
                 <option label="Deutsch" value="de"/>
                 <option label="Français" value="fr"/>
                 <option label="Italiano" value="it"/>

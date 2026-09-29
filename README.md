@@ -171,14 +171,6 @@ Attribution: **Open-Meteo** and **CAMS ENSEMBLE data provider**.
 
 The plugin uses only Python standard-library modules.
 
-It does not require:
-
-- API key
-- `pip install`
-- `requirements.txt`
-- virtual environment
-- `install.sh`
-
 An internet connection is required only when the plugin refreshes the forecast.
 
 ## API errors
@@ -198,8 +190,4 @@ Errors are written to the Domoticz log.
 
 **1.1.0**
 
-## Copyright
 
-Copyright © 2026 blooesky. All rights reserved.
-
-The source code is publicly available, but no open-source license is granted for this repository.
