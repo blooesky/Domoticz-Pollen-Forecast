@@ -14,7 +14,7 @@ Repository: `https://github.com/blooesky/Domoticz-Pollen-Forecast`
 - No API key required
 - No external Python dependencies
 - No installer required
-- 9 interface languages
+- 14 interface languages
 - Configurable latitude and longitude
 - Configurable update interval
 - Separate pollen forecast for today and tomorrow
@@ -33,6 +33,11 @@ Repository: `https://github.com/blooesky/Domoticz-Pollen-Forecast`
 - Português
 - Nederlands
 - Polski
+- Lëtzebuergesch
+- Čeština
+- Български
+- Magyar
+- Svenska
 
 The selected language controls device names when devices are first created, pollen names, alert texts and detailed Text sensor values.
 
@@ -149,7 +154,7 @@ Available settings:
 - **Refresh interval**: 30 minutes, 60 minutes, 3 hours or 6 hours
 - **Debug**: normally Off
 
-Default coordinates are Bucharest (`44.4268`, `26.1025`). Replace them with the coordinates of the desired location within the European CAMS pollen coverage area.
+Latitude and longitude have no default values. Enter the coordinates of the desired location within the European CAMS pollen coverage area before starting the plugin.
 
 ## Changing language
 
@@ -171,6 +176,14 @@ Attribution: **Open-Meteo** and **CAMS ENSEMBLE data provider**.
 
 The plugin uses only Python standard-library modules.
 
+It does not require:
+
+- API key
+- `pip install`
+- `requirements.txt`
+- virtual environment
+- `install.sh`
+
 An internet connection is required only when the plugin refreshes the forecast.
 
 ## API errors
@@ -188,6 +201,34 @@ Errors are written to the Domoticz log.
 
 ## Version
 
-**1.1.0**
+**1.2.1**
+
+## Copyright
+
+Copyright © 2026 blooesky. All rights reserved.
+
+The source code is publicly available, but no open-source license is granted for this repository.
 
 
+## Changelog
+
+### 1.2.1
+
+- Removed the default Latitude and Longitude coordinates.
+- Latitude and Longitude must now be entered by the user.
+- Invalid or missing coordinates no longer fall back to Bucharest.
+
+### 1.2.0
+
+- Added Luxembourgish (Lëtzebuergesch).
+- Added Czech (Čeština).
+- Added Bulgarian (Български).
+- Added Hungarian (Magyar).
+- Added Swedish (Svenska).
+- The plugin now supports 14 interface languages.
+- Alert `nValue` values and pollen calculation logic remain unchanged.
+
+### 1.1.1
+
+- Maintenance release.
+- Devices continue to update only when their displayed value changes.

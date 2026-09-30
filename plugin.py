@@ -2,22 +2,22 @@
 # Pollen Forecast plugin for Domoticz
 # Data source: Open-Meteo Air Quality API / CAMS European Air Quality Forecast
 # No API key and no external Python packages required.
-
+# Copyright (c) 2026 blooesky. All rights reserved.
 
 """
-<plugin key="PollenForecast" name="Pollen Forecast" author="4D" version="1.1.0" externallink="https://github.com/blooesky/Domoticz-Pollen-Forecast">
+<plugin key="PollenForecast" name="Pollen Forecast" author="blooesky" version="1.2.1" externallink="https://github.com/blooesky/Domoticz-Pollen-Forecast">
     <description>
         <h2>Pollen Forecast</h2>
         <p>Creates 4 devices: pollen alert today, pollen alert tomorrow, pollen details today and pollen details tomorrow.</p>
-        <p>Supports English, Romanian, German, French, Italian, Spanish, Portuguese, Dutch and Polish.</p>
+        <p>Supports 14 languages: English, Romanian, German, French, Italian, Spanish, Portuguese, Dutch, Polish, Luxembourgish, Czech, Bulgarian, Hungarian and Swedish.</p>
         <p>Data source: Open-Meteo Air Quality API, based on CAMS European Air Quality Forecast.</p>
     </description>
     <params>
-        <param field="Mode1" label="Latitude" width="120px" required="true" default=""/>
-        <param field="Mode2" label="Longitude" width="120px" required="true" default=""/>
+        <param field="Mode1" label="Latitude" width="120px" required="true"/>
+        <param field="Mode2" label="Longitude" width="120px" required="true"/>
         <param field="Mode3" label="Language" width="180px" required="true" default="en">
             <options>
-                <option label="Română" value="ro"/>
+                <option label="Română" value="ro" />
                 <option label="English" value="en" default="true"/>
                 <option label="Deutsch" value="de"/>
                 <option label="Français" value="fr"/>
@@ -26,6 +26,11 @@
                 <option label="Português" value="pt"/>
                 <option label="Nederlands" value="nl"/>
                 <option label="Polski" value="pl"/>
+                <option label="Lëtzebuergesch" value="lb"/>
+                <option label="Čeština" value="cs"/>
+                <option label="Български" value="bg"/>
+                <option label="Magyar" value="hu"/>
+                <option label="Svenska" value="sv"/>
             </options>
         </param>
         <param field="Mode4" label="Refresh interval" width="180px" required="true" default="60">
@@ -225,13 +230,93 @@ TEXT = {
         },
         "no_data": "B/D",
     },
+    "lb": {
+        "device_alert_today": "Pollenalarm haut",
+        "device_alert_tomorrow": "Pollenalarm muer",
+        "device_today": "Pollen haut",
+        "device_tomorrow": "Pollen muer",
+        "levels": {0: "Keng Donnéeën", 1: "Keng", 2: "Niddereg", 3: "Mëttel", 4: "Héich"},
+        "pollen": {
+            "alder_pollen": "Erle",
+            "birch_pollen": "Birk",
+            "grass_pollen": "Gras",
+            "mugwort_pollen": "Beifouss",
+            "olive_pollen": "Oliven",
+            "ragweed_pollen": "Ambrosia",
+        },
+        "no_data": "Keng Donnéeën",
+    },
+    "cs": {
+        "device_alert_today": "Pylové varování dnes",
+        "device_alert_tomorrow": "Pylové varování zítra",
+        "device_today": "Pyl dnes",
+        "device_tomorrow": "Pyl zítra",
+        "levels": {0: "Bez dat", 1: "Žádný", 2: "Nízký", 3: "Střední", 4: "Vysoký"},
+        "pollen": {
+            "alder_pollen": "Olše",
+            "birch_pollen": "Bříza",
+            "grass_pollen": "Trávy",
+            "mugwort_pollen": "Pelyněk",
+            "olive_pollen": "Olivovník",
+            "ragweed_pollen": "Ambrozie",
+        },
+        "no_data": "N/A",
+    },
+    "bg": {
+        "device_alert_today": "Предупреждение за полени днес",
+        "device_alert_tomorrow": "Предупреждение за полени утре",
+        "device_today": "Полени днес",
+        "device_tomorrow": "Полени утре",
+        "levels": {0: "Без данни", 1: "Няма", 2: "Ниско", 3: "Средно", 4: "Високо"},
+        "pollen": {
+            "alder_pollen": "Елша",
+            "birch_pollen": "Бреза",
+            "grass_pollen": "Треви",
+            "mugwort_pollen": "Пелин",
+            "olive_pollen": "Маслина",
+            "ragweed_pollen": "Амброзия",
+        },
+        "no_data": "Н/Д",
+    },
+    "hu": {
+        "device_alert_today": "Pollenriasztás ma",
+        "device_alert_tomorrow": "Pollenriasztás holnap",
+        "device_today": "Pollen ma",
+        "device_tomorrow": "Pollen holnap",
+        "levels": {0: "Nincs adat", 1: "Nincs", 2: "Alacsony", 3: "Közepes", 4: "Magas"},
+        "pollen": {
+            "alder_pollen": "Éger",
+            "birch_pollen": "Nyír",
+            "grass_pollen": "Fűfélék",
+            "mugwort_pollen": "Üröm",
+            "olive_pollen": "Olajfa",
+            "ragweed_pollen": "Parlagfű",
+        },
+        "no_data": "N/A",
+    },
+    "sv": {
+        "device_alert_today": "Pollenvarning idag",
+        "device_alert_tomorrow": "Pollenvarning imorgon",
+        "device_today": "Pollen idag",
+        "device_tomorrow": "Pollen imorgon",
+        "levels": {0: "Inga data", 1: "Ingen", 2: "Låg", 3: "Medel", 4: "Hög"},
+        "pollen": {
+            "alder_pollen": "Al",
+            "birch_pollen": "Björk",
+            "grass_pollen": "Gräs",
+            "mugwort_pollen": "Gråbo",
+            "olive_pollen": "Oliv",
+            "ragweed_pollen": "Ambrosia",
+        },
+        "no_data": "N/A",
+    },
 }
 
 
 class BasePlugin:
     def __init__(self):
-        self.latitude = 44.4268
-        self.longitude = 26.1025
+        self.latitude = None
+        self.longitude = None
         self.language = "ro"
         self.refresh_minutes = 60
         self.last_update = 0
@@ -253,12 +338,18 @@ class BasePlugin:
 
     def _load_config(self):
         try:
-            self.latitude = float(Parameters.get("Mode1", "44.4268").strip())
-            self.longitude = float(Parameters.get("Mode2", "26.1025").strip())
+            latitude = float(Parameters.get("Mode1", "").strip())
+            longitude = float(Parameters.get("Mode2", "").strip())
+            if not -90.0 <= latitude <= 90.0:
+                raise ValueError("Latitude out of range")
+            if not -180.0 <= longitude <= 180.0:
+                raise ValueError("Longitude out of range")
+            self.latitude = latitude
+            self.longitude = longitude
         except (TypeError, ValueError):
-            Domoticz.Error("Invalid latitude or longitude. Using Bucharest defaults.")
-            self.latitude = 44.4268
-            self.longitude = 26.1025
+            self.latitude = None
+            self.longitude = None
+            Domoticz.Error("Latitude and longitude are required and must be valid coordinates.")
 
         lang = Parameters.get("Mode3", "ro").strip().lower()
         self.language = lang if lang in TEXT else "ro"
@@ -286,6 +377,11 @@ class BasePlugin:
 
     def _update_pollen(self):
         self._log("Updating pollen forecast...")
+
+        if self.latitude is None or self.longitude is None:
+            Domoticz.Error("Pollen update skipped: configure valid Latitude and Longitude values in Hardware settings.")
+            self.last_update = time.time()
+            return
 
         try:
             data = self._fetch_api()
@@ -320,7 +416,7 @@ class BasePlugin:
         request = urllib.request.Request(
             url,
             headers={
-                "User-Agent": "Domoticz-PollenForecast/1.1",
+                "User-Agent": "Domoticz-PollenForecast/1.2",
                 "Accept": "application/json",
             },
         )
