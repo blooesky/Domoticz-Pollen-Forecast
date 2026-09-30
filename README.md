@@ -215,8 +215,6 @@ The source code is publicly available, but no open-source license is granted for
 ### 1.2.1
 
 - Removed the default Latitude and Longitude coordinates.
-- Latitude and Longitude must now be entered by the user.
-- Invalid or missing coordinates no longer fall back to Bucharest.
 
 ### 1.2.0
 
