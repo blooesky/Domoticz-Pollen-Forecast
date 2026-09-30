@@ -5,7 +5,7 @@
 # Copyright (c) 2026 blooesky. All rights reserved.
 
 """
-<plugin key="PollenForecast" name="Pollen Forecast" author="blooesky" version="1.2.1" externallink="https://github.com/blooesky/Domoticz-Pollen-Forecast">
+<plugin key="PollenForecast" name="Pollen Forecast" author="4D" version="1.2.1" externallink="https://github.com/blooesky/Domoticz-Pollen-Forecast">
     <description>
         <h2>Pollen Forecast</h2>
         <p>Creates 4 devices: pollen alert today, pollen alert tomorrow, pollen details today and pollen details tomorrow.</p>
