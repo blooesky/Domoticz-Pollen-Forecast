@@ -203,13 +203,6 @@ Errors are written to the Domoticz log.
 
 **1.2.1**
 
-## Copyright
-
-Copyright © 2026 blooesky. All rights reserved.
-
-The source code is publicly available, but no open-source license is granted for this repository.
-
-
 ## Changelog
 
 ### 1.2.1
