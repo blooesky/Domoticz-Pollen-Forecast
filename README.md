@@ -15,7 +15,8 @@ Repository: `https://github.com/blooesky/Domoticz-Pollen-Forecast`
 - No external Python dependencies
 - No installer required
 - 14 interface languages
-- Configurable latitude and longitude
+- Automatically uses the location configured in Domoticz
+- Optional latitude/longitude override for monitoring another location
 - Configurable update interval
 - Separate pollen forecast for today and tomorrow
 - Domoticz Alert sensors suitable for automations and notifications
@@ -148,13 +149,23 @@ Existing devices and plugin settings are preserved during normal updates.
 
 Available settings:
 
-- **Latitude**
-- **Longitude**
+- **Latitude (optional override)**
+- **Longitude (optional override)**
 - **Language**
 - **Refresh interval**: 30 minutes, 60 minutes, 3 hours or 6 hours
 - **Debug**: normally Off
 
-Latitude and longitude have no default values. Enter the coordinates of the desired location within the European CAMS pollen coverage area before starting the plugin.
+### Location
+
+By default, leave **Latitude** and **Longitude** empty. The plugin will automatically use the location configured in **Domoticz → Setup → Settings → Location**.
+
+If you want this plugin instance to monitor another location, enter both Latitude and Longitude in the Hardware settings. These custom coordinates override the global Domoticz location only for this plugin instance.
+
+If the override fields are empty, the plugin reads the Domoticz location again on every forecast refresh. It first checks the Python plugin `Settings` dictionary and, when the location is not exposed there, falls back to the local Domoticz `getsettings` API. This means that changes made later in Domoticz Settings are automatically followed without editing the plugin configuration.
+
+On secured Domoticz installations, the local API fallback may require `127.0.0.1` to be allowed in **Setup → Settings → Security → Trusted Networks (no username/password)**. This is the same local-access configuration commonly required by dzVents.
+
+Both override fields must be completed together. If only one is entered, the pollen update is skipped and an error is written to the Domoticz log.
 
 ## Changing language
 
@@ -201,13 +212,37 @@ Errors are written to the Domoticz log.
 
 ## Version
 
-**1.2.1**
+**1.2.3**
+
+## Copyright
+
+Copyright © 2026 blooesky. All rights reserved.
+
+The source code is publicly available, but no open-source license is granted for this repository.
+
 
 ## Changelog
+
+### 1.2.3
+
+- Fixed automatic Domoticz location detection on installations where the Python `Settings` dictionary does not expose the nested `Location` object.
+- Added local `getsettings` API fallback for Latitude/Longitude.
+- Detects custom Domoticz HTTP/HTTPS ports from the running process on Linux, with standard-port fallback.
+- Avoids duplicate location errors during plugin startup.
+- Manual Latitude/Longitude override behavior is unchanged.
+
+### 1.2.2
+
+- Automatically uses the global Domoticz location when Latitude/Longitude overrides are empty.
+- Added optional per-plugin Latitude/Longitude override for monitoring another location.
+- The Domoticz location is re-read on every refresh when automatic location mode is active.
+- No default/fallback coordinates are included in the plugin.
 
 ### 1.2.1
 
 - Removed the default Latitude and Longitude coordinates.
+- Latitude and Longitude must now be entered by the user.
+- Invalid or missing coordinates no longer fall back to Bucharest.
 
 ### 1.2.0
 

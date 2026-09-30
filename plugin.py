@@ -5,7 +5,7 @@
 # Copyright (c) 2026 blooesky. All rights reserved.
 
 """
-<plugin key="PollenForecast" name="Pollen Forecast" author="4D" version="1.2.1" externallink="https://github.com/blooesky/Domoticz-Pollen-Forecast">
+<plugin key="PollenForecast" name="Pollen Forecast" author="4D" version="1.2.3" externallink="https://github.com/blooesky/Domoticz-Pollen-Forecast">
     <description>
         <h2>Pollen Forecast</h2>
         <p>Creates 4 devices: pollen alert today, pollen alert tomorrow, pollen details today and pollen details tomorrow.</p>
@@ -13,11 +13,11 @@
         <p>Data source: Open-Meteo Air Quality API, based on CAMS European Air Quality Forecast.</p>
     </description>
     <params>
-        <param field="Mode1" label="Latitude" width="120px" required="true"/>
-        <param field="Mode2" label="Longitude" width="120px" required="true"/>
-        <param field="Mode3" label="Language" width="180px" required="true" default="en">
+        <param field="Mode1" label="Latitude (optional override)" width="180px" required="false" default=""/>
+        <param field="Mode2" label="Longitude (optional override)" width="180px" required="false" default=""/>
+        <param field="Mode3" label="Language" width="180px" required="true" default="ro">
             <options>
-                <option label="Română" value="ro" />
+                <option label="Română" value="ro"/>
                 <option label="English" value="en" default="true"/>
                 <option label="Deutsch" value="de"/>
                 <option label="Français" value="fr"/>
@@ -53,6 +53,10 @@
 
 import Domoticz
 import json
+import os
+import re
+import ssl
+import sys
 import time
 import urllib.parse
 import urllib.request
@@ -321,6 +325,7 @@ class BasePlugin:
         self.refresh_minutes = 60
         self.last_update = 0
         self.debug = False
+        self.use_domoticz_location = True
 
     def onStart(self):
         self._load_config()
@@ -337,19 +342,33 @@ class BasePlugin:
             self._update_pollen()
 
     def _load_config(self):
-        try:
-            latitude = float(Parameters.get("Mode1", "").strip())
-            longitude = float(Parameters.get("Mode2", "").strip())
-            if not -90.0 <= latitude <= 90.0:
-                raise ValueError("Latitude out of range")
-            if not -180.0 <= longitude <= 180.0:
-                raise ValueError("Longitude out of range")
-            self.latitude = latitude
-            self.longitude = longitude
-        except (TypeError, ValueError):
+        latitude_text = Parameters.get("Mode1", "").strip()
+        longitude_text = Parameters.get("Mode2", "").strip()
+
+        # Empty override fields mean: use the global Domoticz location from
+        # Setup -> Settings -> Location. If both fields are filled in, they
+        # override the Domoticz location for this plugin instance only.
+        if latitude_text == "" and longitude_text == "":
+            self.use_domoticz_location = True
             self.latitude = None
             self.longitude = None
-            Domoticz.Error("Latitude and longitude are required and must be valid coordinates.")
+        elif latitude_text != "" and longitude_text != "":
+            self.use_domoticz_location = False
+            try:
+                latitude = float(latitude_text)
+                longitude = float(longitude_text)
+                self._validate_coordinates(latitude, longitude)
+                self.latitude = latitude
+                self.longitude = longitude
+            except (TypeError, ValueError) as exc:
+                self.latitude = None
+                self.longitude = None
+                Domoticz.Error("Invalid custom Latitude/Longitude: {}".format(exc))
+        else:
+            self.use_domoticz_location = False
+            self.latitude = None
+            self.longitude = None
+            Domoticz.Error("Custom location requires both Latitude and Longitude, or leave both fields empty to use the Domoticz location.")
 
         lang = Parameters.get("Mode3", "ro").strip().lower()
         self.language = lang if lang in TEXT else "ro"
@@ -360,6 +379,213 @@ class BasePlugin:
             self.refresh_minutes = 60
 
         self.debug = Parameters.get("Mode5", "0") == "1"
+
+
+    @staticmethod
+    def _validate_coordinates(latitude, longitude):
+        if not -90.0 <= latitude <= 90.0:
+            raise ValueError("Latitude out of range")
+        if not -180.0 <= longitude <= 180.0:
+            raise ValueError("Longitude out of range")
+
+    @staticmethod
+    def _parse_location_value(value):
+        """Return (lat, lon) when value contains a usable Domoticz location."""
+        if isinstance(value, dict):
+            latitude = value.get("Latitude", value.get("latitude"))
+            longitude = value.get("Longitude", value.get("longitude"))
+            if latitude not in (None, "") and longitude not in (None, ""):
+                return latitude, longitude
+            return None
+
+        # Some versions/plugins expose compound values as text. Accept the
+        # common "lat;lon" and "lat,lon" representations as a compatibility
+        # fallback.
+        if isinstance(value, str):
+            text = value.strip()
+            if not text:
+                return None
+            match = re.match(
+                r"^\s*([-+]?\d+(?:\.\d+)?)\s*[,;]\s*([-+]?\d+(?:\.\d+)?)\s*$",
+                text,
+            )
+            if match:
+                return match.group(1), match.group(2)
+
+        return None
+
+    @staticmethod
+    def _extract_location(container):
+        """Extract latitude/longitude from known Domoticz settings layouts."""
+        if not isinstance(container, dict):
+            return None
+
+        # JSON getsettings uses: Location: {Latitude: ..., Longitude: ...}
+        for key in ("Location", "location"):
+            if key in container:
+                parsed = BasePlugin._parse_location_value(container.get(key))
+                if parsed:
+                    return parsed
+
+        # Compatibility with flat preference dictionaries.
+        latitude = None
+        longitude = None
+        latitude_keys = (
+            "Latitude", "latitude", "LocationLatitude", "locationLatitude",
+            "Location_Latitude", "LocationLat", "lat",
+        )
+        longitude_keys = (
+            "Longitude", "longitude", "LocationLongitude", "locationLongitude",
+            "Location_Longitude", "LocationLon", "LocationLng", "lon", "lng",
+        )
+
+        for key in latitude_keys:
+            if key in container and container.get(key) not in (None, ""):
+                latitude = container.get(key)
+                break
+        for key in longitude_keys:
+            if key in container and container.get(key) not in (None, ""):
+                longitude = container.get(key)
+                break
+
+        if latitude not in (None, "") and longitude not in (None, ""):
+            return latitude, longitude
+
+        return None
+
+    def _local_domoticz_urls(self):
+        """Build local Domoticz API candidates without requiring user config."""
+        http_ports = []
+        https_ports = []
+
+        # On Linux the plugin runs inside the Domoticz process. Reading the
+        # process command line lets us honor custom -www / -sslwww ports.
+        cmdline = []
+        try:
+            if os.path.exists("/proc/self/cmdline"):
+                raw = open("/proc/self/cmdline", "rb").read()
+                cmdline = [part.decode("utf-8", "ignore") for part in raw.split(b"\0") if part]
+        except Exception:
+            cmdline = []
+
+        if not cmdline:
+            try:
+                cmdline = list(sys.argv)
+            except Exception:
+                cmdline = []
+
+        for index, item in enumerate(cmdline):
+            if item == "-www" and index + 1 < len(cmdline):
+                try:
+                    port = int(cmdline[index + 1])
+                    if port > 0:
+                        http_ports.append(port)
+                except (TypeError, ValueError):
+                    pass
+            elif item.startswith("-www="):
+                try:
+                    port = int(item.split("=", 1)[1])
+                    if port > 0:
+                        http_ports.append(port)
+                except (TypeError, ValueError):
+                    pass
+            elif item == "-sslwww" and index + 1 < len(cmdline):
+                try:
+                    port = int(cmdline[index + 1])
+                    if port > 0:
+                        https_ports.append(port)
+                except (TypeError, ValueError):
+                    pass
+            elif item.startswith("-sslwww="):
+                try:
+                    port = int(item.split("=", 1)[1])
+                    if port > 0:
+                        https_ports.append(port)
+                except (TypeError, ValueError):
+                    pass
+
+        # Standard Domoticz ports remain useful on Windows and installations
+        # where command-line arguments are not visible to the embedded Python.
+        if 8080 not in http_ports:
+            http_ports.append(8080)
+        if 443 not in https_ports:
+            https_ports.append(443)
+
+        urls = []
+        for port in http_ports:
+            urls.append("http://127.0.0.1:{}/json.htm?type=command&param=getsettings".format(port))
+        for port in https_ports:
+            urls.append("https://127.0.0.1:{}/json.htm?type=command&param=getsettings".format(port))
+        return urls
+
+    def _load_location_from_local_api(self):
+        """Read Setup -> Settings -> Location through the local Domoticz API."""
+        ssl_context = ssl._create_unverified_context()
+
+        for url in self._local_domoticz_urls():
+            try:
+                request = urllib.request.Request(
+                    url,
+                    headers={
+                        "User-Agent": "Domoticz-PollenForecast/1.2.3",
+                        "Accept": "application/json",
+                    },
+                )
+                kwargs = {"timeout": 3}
+                if url.startswith("https://"):
+                    kwargs["context"] = ssl_context
+
+                with urllib.request.urlopen(request, **kwargs) as response:
+                    if response.status != 200:
+                        continue
+                    payload = json.loads(response.read().decode("utf-8"))
+
+                parsed = self._extract_location(payload)
+                if parsed:
+                    self._log("Domoticz location read from local API via {}".format(url.split("/json.htm", 1)[0]))
+                    return parsed
+            except Exception as exc:
+                self._log("Local Domoticz location lookup failed via {}: {}".format(url, exc))
+
+        return None
+
+    def _load_domoticz_location(self):
+        """Load the global Domoticz latitude/longitude with API fallback."""
+        parsed = None
+
+        # First use the Python plugin Settings dictionary when the running
+        # Domoticz version exposes location data there.
+        try:
+            settings = globals().get("Settings", {})
+            parsed = self._extract_location(settings)
+        except Exception as exc:
+            self._log("Unable to inspect Python Settings for location: {}".format(exc))
+
+        # The public getsettings response reliably exposes a nested Location
+        # object, while the Python Settings dictionary can differ by version.
+        if not parsed:
+            parsed = self._load_location_from_local_api()
+
+        if parsed:
+            try:
+                latitude = float(parsed[0])
+                longitude = float(parsed[1])
+                self._validate_coordinates(latitude, longitude)
+                self.latitude = latitude
+                self.longitude = longitude
+                self._log("Using Domoticz location: {}, {}".format(latitude, longitude))
+                return True
+            except (TypeError, ValueError):
+                pass
+
+        self.latitude = None
+        self.longitude = None
+        Domoticz.Error(
+            "Unable to read a valid location from Domoticz. "
+            "Make sure Setup -> Settings -> Location is configured and, if the local API requires authentication, "
+            "allow 127.0.0.1 in Trusted Networks; alternatively enter custom Latitude/Longitude in Hardware settings."
+        )
+        return False
 
     def _create_devices(self):
         t = TEXT[self.language]
@@ -378,8 +604,15 @@ class BasePlugin:
     def _update_pollen(self):
         self._log("Updating pollen forecast...")
 
+        # When no custom coordinates are configured, follow the current
+        # location from Domoticz Settings on every refresh.
+        if self.use_domoticz_location:
+            self._load_domoticz_location()
+
         if self.latitude is None or self.longitude is None:
-            Domoticz.Error("Pollen update skipped: configure valid Latitude and Longitude values in Hardware settings.")
+            Domoticz.Error(
+                "Pollen update skipped: configure a valid Domoticz location or enter both custom Latitude and Longitude values."
+            )
             self.last_update = time.time()
             return
 
@@ -416,7 +649,7 @@ class BasePlugin:
         request = urllib.request.Request(
             url,
             headers={
-                "User-Agent": "Domoticz-PollenForecast/1.2",
+                "User-Agent": "Domoticz-PollenForecast/1.2.3",
                 "Accept": "application/json",
             },
         )
