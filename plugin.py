@@ -5,7 +5,7 @@
 # Copyright (c) 2026 blooesky. All rights reserved.
 
 """
-<plugin key="PollenForecast" name="Pollen Forecast" author="4D" version="1.2.3" externallink="https://github.com/blooesky/Domoticz-Pollen-Forecast">
+<plugin key="PollenForecast" name="Pollen Forecast" author="blooesky" version="1.2.4" externallink="https://github.com/blooesky/Domoticz-Pollen-Forecast">
     <description>
         <h2>Pollen Forecast</h2>
         <p>Creates 4 devices: pollen alert today, pollen alert tomorrow, pollen details today and pollen details tomorrow.</p>
@@ -17,8 +17,8 @@
         <param field="Mode2" label="Longitude (optional override)" width="180px" required="false" default=""/>
         <param field="Mode3" label="Language" width="180px" required="true" default="ro">
             <options>
-                <option label="Română" value="ro"/>
-                <option label="English" value="en" default="true"/>
+                <option label="Română" value="ro" default="true"/>
+                <option label="English" value="en"/>
                 <option label="Deutsch" value="de"/>
                 <option label="Français" value="fr"/>
                 <option label="Italiano" value="it"/>
@@ -326,6 +326,10 @@ class BasePlugin:
         self.last_update = 0
         self.debug = False
         self.use_domoticz_location = True
+        self.location_source = None
+        self.next_location_retry_at = 0
+        self.location_retry_seconds = 60
+        self._location_error_reported = False
 
     def onStart(self):
         self._load_config()
@@ -338,7 +342,24 @@ class BasePlugin:
         self._log("Plugin stopped")
 
     def onHeartbeat(self):
-        if time.time() - self.last_update >= self.refresh_minutes * 60:
+        now = time.time()
+
+        # If Domoticz location was not ready at startup, retry quickly instead
+        # of waiting for the normal pollen refresh interval. A cached location
+        # can still be used for forecasts while these recovery attempts run.
+        if self.use_domoticz_location:
+            if self.latitude is None or self.longitude is None:
+                if now >= self.next_location_retry_at:
+                    self._update_pollen()
+                return
+
+            if self.location_source == "cache" and now >= self.next_location_retry_at:
+                previous = (self.latitude, self.longitude)
+                self._load_domoticz_location()
+                if self.location_source != "cache" and (self.latitude, self.longitude) != previous:
+                    self.last_update = 0
+
+        if now - self.last_update >= self.refresh_minutes * 60:
             self._update_pollen()
 
     def _load_config(self):
@@ -380,6 +401,53 @@ class BasePlugin:
 
         self.debug = Parameters.get("Mode5", "0") == "1"
 
+
+    def _read_persistent_config(self):
+        try:
+            config = Domoticz.Configuration()
+            return config if isinstance(config, dict) else {}
+        except Exception as exc:
+            self._log("Domoticz.Configuration read failed: {}".format(exc))
+            return {}
+
+    def _save_cached_location(self, latitude, longitude):
+        """Persist the last valid Domoticz location in the Domoticz database."""
+        try:
+            config = self._read_persistent_config()
+            lat_text = "{:.8f}".format(float(latitude))
+            lon_text = "{:.8f}".format(float(longitude))
+
+            if (
+                config.get("last_known_latitude") == lat_text
+                and config.get("last_known_longitude") == lon_text
+            ):
+                return
+
+            config["last_known_latitude"] = lat_text
+            config["last_known_longitude"] = lon_text
+            config["last_known_location_saved_at"] = str(int(time.time()))
+            Domoticz.Configuration(config)
+            self._log("Saved last known Domoticz location")
+        except Exception as exc:
+            self._log("Domoticz.Configuration write failed: {}".format(exc))
+
+    def _load_cached_location(self):
+        """Return the last valid Domoticz location stored by this plugin."""
+        config = self._read_persistent_config()
+        latitude = config.get("last_known_latitude")
+        longitude = config.get("last_known_longitude")
+
+        if latitude in (None, "") or longitude in (None, ""):
+            return None
+
+        try:
+            latitude = float(latitude)
+            longitude = float(longitude)
+            self._validate_coordinates(latitude, longitude)
+            return latitude, longitude
+        except (TypeError, ValueError):
+            self._log("Ignoring invalid cached Domoticz location")
+            return None
 
     @staticmethod
     def _validate_coordinates(latitude, longitude):
@@ -527,7 +595,7 @@ class BasePlugin:
                 request = urllib.request.Request(
                     url,
                     headers={
-                        "User-Agent": "Domoticz-PollenForecast/1.2.3",
+                        "User-Agent": "Domoticz-PollenForecast/1.2.4",
                         "Accept": "application/json",
                     },
                 )
@@ -550,21 +618,26 @@ class BasePlugin:
         return None
 
     def _load_domoticz_location(self):
-        """Load the global Domoticz latitude/longitude with API fallback."""
+        """Load Domoticz location, falling back to the last known valid value."""
         parsed = None
+        source = None
 
         # First use the Python plugin Settings dictionary when the running
         # Domoticz version exposes location data there.
         try:
             settings = globals().get("Settings", {})
             parsed = self._extract_location(settings)
+            if parsed:
+                source = "settings"
         except Exception as exc:
             self._log("Unable to inspect Python Settings for location: {}".format(exc))
 
-        # The public getsettings response reliably exposes a nested Location
+        # The local getsettings response reliably exposes a nested Location
         # object, while the Python Settings dictionary can differ by version.
         if not parsed:
             parsed = self._load_location_from_local_api()
+            if parsed:
+                source = "api"
 
         if parsed:
             try:
@@ -573,18 +646,42 @@ class BasePlugin:
                 self._validate_coordinates(latitude, longitude)
                 self.latitude = latitude
                 self.longitude = longitude
-                self._log("Using Domoticz location: {}, {}".format(latitude, longitude))
+                self.location_source = source
+                self.next_location_retry_at = 0
+                self._location_error_reported = False
+                self._save_cached_location(latitude, longitude)
+                self._log("Using Domoticz location from {}: {}, {}".format(source, latitude, longitude))
                 return True
-            except (TypeError, ValueError):
-                pass
+            except (TypeError, ValueError) as exc:
+                self._log("Invalid Domoticz location returned by {}: {}".format(source, exc))
+
+        # Domoticz can temporarily be unavailable during startup. Use the last
+        # valid automatic location saved in Domoticz.Configuration so pollen
+        # updates can continue while we retry the live location in the background.
+        cached = self._load_cached_location()
+        if cached:
+            self.latitude, self.longitude = cached
+            self.location_source = "cache"
+            self.next_location_retry_at = time.time() + self.location_retry_seconds
+            self._location_error_reported = False
+            self._log(
+                "Live Domoticz location unavailable; using last known location: {}, {}".format(
+                    self.latitude, self.longitude
+                )
+            )
+            return True
 
         self.latitude = None
         self.longitude = None
-        Domoticz.Error(
-            "Unable to read a valid location from Domoticz. "
-            "Make sure Setup -> Settings -> Location is configured and, if the local API requires authentication, "
-            "allow 127.0.0.1 in Trusted Networks; alternatively enter custom Latitude/Longitude in Hardware settings."
-        )
+        self.location_source = None
+        self.next_location_retry_at = time.time() + self.location_retry_seconds
+
+        if not self._location_error_reported:
+            Domoticz.Error(
+                "Unable to read a valid location from Domoticz and no last known location is cached. "
+                "The plugin will retry automatically; alternatively enter custom Latitude/Longitude in Hardware settings."
+            )
+            self._location_error_reported = True
         return False
 
     def _create_devices(self):
@@ -610,10 +707,15 @@ class BasePlugin:
             self._load_domoticz_location()
 
         if self.latitude is None or self.longitude is None:
-            Domoticz.Error(
-                "Pollen update skipped: configure a valid Domoticz location or enter both custom Latitude and Longitude values."
-            )
-            self.last_update = time.time()
+            # In automatic-location mode _load_domoticz_location() already
+            # scheduled a short retry and logged the problem once. Do not move
+            # last_update forward, otherwise the retry would wait for the full
+            # pollen refresh interval.
+            if not self.use_domoticz_location:
+                Domoticz.Error(
+                    "Pollen update skipped: enter both custom Latitude and Longitude values, or leave both empty to use the Domoticz location."
+                )
+                self.last_update = time.time()
             return
 
         try:
@@ -649,7 +751,7 @@ class BasePlugin:
         request = urllib.request.Request(
             url,
             headers={
-                "User-Agent": "Domoticz-PollenForecast/1.2.3",
+                "User-Agent": "Domoticz-PollenForecast/1.2.4",
                 "Accept": "application/json",
             },
         )

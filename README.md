@@ -163,6 +163,10 @@ If you want this plugin instance to monitor another location, enter both Latitud
 
 If the override fields are empty, the plugin reads the Domoticz location again on every forecast refresh. It first checks the Python plugin `Settings` dictionary and, when the location is not exposed there, falls back to the local Domoticz `getsettings` API. This means that changes made later in Domoticz Settings are automatically followed without editing the plugin configuration.
 
+Whenever a valid automatic Domoticz location is read, the plugin stores it as the **last known location** using `Domoticz.Configuration()`. This data is stored by Domoticz in its database; no `.env` file or extra configuration file is required.
+
+If the live Domoticz location is temporarily unavailable during startup, the plugin uses the last known valid location and retries the live location every **60 seconds**. Once Domoticz location data becomes available again, the plugin automatically returns to the live coordinates. If no cached location exists yet, the plugin waits and retries automatically instead of falling back to hard-coded coordinates.
+
 On secured Domoticz installations, the local API fallback may require `127.0.0.1` to be allowed in **Setup → Settings → Security → Trusted Networks (no username/password)**. This is the same local-access configuration commonly required by dzVents.
 
 Both override fields must be completed together. If only one is entered, the pollen update is skipped and an error is written to the Domoticz log.
@@ -212,7 +216,7 @@ Errors are written to the Domoticz log.
 
 ## Version
 
-**1.2.3**
+**1.2.4**
 
 ## Copyright
 
@@ -222,6 +226,15 @@ The source code is publicly available, but no open-source license is granted for
 
 
 ## Changelog
+
+### 1.2.4
+
+- Added persistent last-known Domoticz location using `Domoticz.Configuration()`.
+- If the live Domoticz location is temporarily unavailable, the plugin can continue using the last valid automatic location.
+- Added 60-second recovery retries when Domoticz location data is not ready at startup.
+- Automatically switches back to the live Domoticz location when it becomes available.
+- No `.env` file, hard-coded fallback coordinates or external configuration file is required.
+- Manual Latitude/Longitude overrides remain unchanged and always take priority.
 
 ### 1.2.3
 
